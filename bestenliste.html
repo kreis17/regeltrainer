@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bestenliste – Regeltrainer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;700;800;900&family=Barlow:wght@400;500;600&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Barlow', sans-serif; background: #f4f4f4; color: #1a1a1a; min-height: 100vh; display: flex; flex-direction: column; }
+  header { background: #1a7a3c; padding: 14px 40px; display: flex; align-items: center; justify-content: center; border-bottom: 3px solid #f5c800; flex-shrink: 0; gap: 40px; }
+  .header-left { text-align: left; }
+  .header-title { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 26px; letter-spacing: 2px; text-transform: uppercase; color: #fff; }
+  .header-sub { font-size: 13px; color: rgba(255,255,255,0.7); margin-top: 1px; }
+  .header-right { text-align: right; font-size: 13px; color: rgba(255,255,255,0.7); }
+  .refresh-btn { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.4); color: #fff; padding: 6px 16px; border-radius: 16px; font-family: 'Barlow', sans-serif; font-size: 13px; cursor: pointer; margin-top: 6px; transition: background .2s; }
+  .refresh-btn:hover { background: rgba(255,255,255,0.3); }
+  main { flex: 1; padding: 28px 40px; max-width: 672px; width: 100%; margin: 0 auto; }
+  .loading { text-align: center; font-size: 20px; color: #888; padding: 60px 0; }
+  .empty { text-align: center; font-size: 20px; color: #888; padding: 60px 0; }
+  .list { display: flex; flex-direction: column; gap: 8px; }
+  .item { background: #fff; border-radius: 10px; padding: 8px 20px; display: flex; align-items: center; gap: 16px; border: 1px solid #e0e0e0; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .item.top1 { background: #fffbea; border-color: #f5c800; border-width: 2px; }
+  .item.top2 { background: #f5f5f8; border-color: #b0b0c8; border-width: 2px; }
+  .item.top3 { background: #fdf5ef; border-color: #cd7f32; border-width: 2px; }
+  .rank { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 24px; width: 40px; text-align: center; flex-shrink: 0; color: #888; }
+  .medal { font-size: 24px; width: 40px; text-align: center; flex-shrink: 0; }
+  .name { width: 180px; flex-shrink: 0; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 22px; color: #1a1a1a; text-align: left; }
+  .spacer { flex: 1; }
+  .score { text-align: right; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; min-width: 120px; }
+  .score-pts { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 22px; color: #1a7a3c; }
+  .score-time { font-size: 16px; color: #1a1a1a; }
+  .test-name { font-family: 'Barlow Condensed', sans-serif; font-size: 26px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #333; margin-bottom: 6px; text-align: center; }
+  .count { font-size: 13px; color: #aaa; margin-bottom: 14px; text-align: center; }
+</style>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <div class="header-title">🏆 Bestenliste</div>
+    <div class="header-sub">Regeltrainer – Die Trainings-App für Schiedsrichter</div>
+  </div>
+  <div class="header-right">
+    <div id="lastUpdate">Lade…</div>
+    <button class="refresh-btn" onclick="load()">↻ Aktualisieren</button>
+  </div>
+</header>
+<main>
+  <div id="content" class="loading">Lade Ergebnisse…</div>
+</main>
+<script>
+const SUPABASE_URL = 'https://gekdwcopwvkptvgxyeov.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdla2R3Y29wd3ZrcHR2Z3h5ZW92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MTkzNTIsImV4cCI6MjA5MzQ5NTM1Mn0.LMVtOf-WKHgv8r4msg17OYAw5vnNlqTULXdjnnRQhtQ';
+const TEST_ID = 'st_1777971833879';
+
+async function load() {
+  const el = document.getElementById('content');
+  try {
+    const tRes = await fetch(`${SUPABASE_URL}/rest/v1/schulungstests?id=eq.${TEST_ID}`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    const tData = await tRes.json();
+    const testName = tData?.[0]?.data?.name || 'Schulungstest';
+
+    const rRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/ergebnisse?test_id=eq.${TEST_ID}&order=punkte.desc,zeit_sekunden.asc&limit=50`,
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+    );
+    const results = await rRes.json();
+
+    document.getElementById('lastUpdate').textContent =
+      'Stand: ' + new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+
+    if (!results || results.length === 0) {
+      el.innerHTML = '<div class="empty">Noch keine Ergebnisse vorhanden.</div>';
+      return;
+    }
+
+    const medals = ['🥇','🥈','🥉'];
+    let html = `<div class="test-name">${testName}</div><div class="count">${results.length} Teilnehmer</div><div class="list">`;
+
+    results.forEach((r, i) => {
+      const cls = i===0?'top1':i===1?'top2':i===2?'top3':'';
+      const rankDisplay = i < 3 ? `<div class="medal">${medals[i]}</div>` : `<div class="rank">${i+1}</div>`;
+      const mins = Math.floor((r.zeit_sekunden||0)/60);
+      const secs = String((r.zeit_sekunden||0)%60).padStart(2,'0');
+      const pct = r.max_punkte > 0 ? Math.round(r.punkte/r.max_punkte*100) : 0;
+      html += `<div class="item ${cls}">${rankDisplay}<div class="name">${r.teilnehmer}</div><div class="spacer"></div><div class="score"><div class="score-pts">${r.punkte} / ${r.max_punkte} Pkt</div>${r.zeit_sekunden?`<div class="score-time">⏱ ${mins}:${secs}</div>`:''}</div></div>`;
+    });
+
+    html += '</div>';
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = `<div class="empty">Fehler: ${e.message}</div>`;
+  }
+}
+
+load();
+setInterval(load, 15000);
+</script>
+</body>
+</html>
